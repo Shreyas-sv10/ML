@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Temple & Tourist Crowd Density Predictor</title>
+  <style>
+    :root{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --accent:#06b6d4;
+      --muted:#94a3b8;
+      --glass: rgba(255,255,255,0.03);
+      --success:#10b981;
+      --danger:#ef4444;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    html,body{height:100%;}
+    body{
+      margin:0;
+      background: linear-gradient(180deg,#071029 0%, #081427 60%);
+      color:#e6eef6;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:20px;
+      box-sizing:border-box;
+      font-size:15px;
+    }
+    .container{
+      max-width:980px;
+      margin:0 auto;
+      display:grid;
+      grid-template-columns: 1fr 360px;
+      gap:22px;
+      align-items:start;
+    }
+    header{
+      grid-column:1/-1;
+      margin-bottom:6px;
+    }
+    h1{margin:0 0 6px 0;font-size:20px;}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:12px;
+      padding:16px;
+      box-shadow: 0 6px 18px rgba(2,6,23,0.6);
+      border:1px solid rgba(255,255,255,0.03);
+    }
+    .form-row{display:flex;gap:10px;margin-bottom:12px;}
+    .form-row .col{flex:1;min-width:0;}
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+    select,input[type="date"],input[type="number"],input[type="text"]{
+      width:100%;
+      padding:10px 12px;
+      border-radius:8px;
+      background:var(--glass);
+      border:1px solid rgba(255,255,255,0.03);
+      color:var(--muted);
+      outline:none;
+    }
+    input[type="checkbox"]{transform:scale(1.1);margin-right:8px}
+    .small{font-size:13px;color:var(--muted)}
+    .btn{
+      display:inline-block;
+      background:linear-gradient(90deg,var(--accent),#7dd3fc);
+      color:#052025;
+      padding:10px 14px;
+      border-radius:10px;
+      font-weight:600;
+      border:none;
+      cursor:pointer;
+      box-shadow: 0 6px 18px rgba(6,182,212,0.15);
+    }
+    .result{
+      margin-top:12px;
+      padding:12px;border-radius:10px;background:rgba(255,255,255,0.02);
+      display:flex;gap:12px;align-items:center;
+    }
+    .badge{
+      padding:10px 12px;border-radius:10px;font-weight:700;
+      display:inline-block;color:#052025;background:var(--accent);
+    }
+    .density{
+      font-size:18px;margin:0;padding:0;
+    }
+    .hint{font-size:13px;color:var(--muted);margin-top:10px}
+    /* right column */
+    .side{
+      position:sticky;
+      top:20px;
+    }
+    .stat{
+      font-size:28px;font-weight:700;margin:0;
+    }
+    .muted{color:var(--muted)}
+    .heat{
+      margin-top:12px;border-radius:10px;overflow:hidden;height:220px;background:linear-gradient(180deg,#032036,#021826);
+      display:flex;align-items:center;justify-content:center;color:var(--muted);
+    }
+    .footer{
+      grid-column:1/-1;margin-top:18px;color:var(--muted);font-size:13px;text-align:center;
+    }
+    @media (max-width:980px){
+      .container{grid-template-columns:1fr; padding-bottom:60px;}
+      .side{position:relative;top:0}
+    }
+    /* small helper */
+    .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.02);font-weight:600}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Temple & Tourist Spot Crowd Density Predictor</h1>
+      <p class="lead">Pick a location, time and weather — the page will simulate realistic crowd footfall and tell you if the spot will be <strong>Low / Medium / High / Very High</strong>.</p>
+    </header>
+
+    <!-- left: form -->
+    <div class="card">
+      <div style="display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div>
+          <div class="pill">Local simulator • client-only</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:6px">No server. Works offline after load. Mobile friendly.</div>
+        </div>
+        <div style="text-align:right;color:var(--muted);font-size:13px">v1.0</div>
+      </div>
+
+      <div class="form-row">
+        <div class="col">
+          <label>Location</label>
+          <select id="location">
+            <option>Chamundi_Temple</option>
+            <option>Nanjangud_Temple</option>
+            <option>Srirangapatna_Temple</option>
+            <option>Mysore_Palace</option>
+            <option>Brindavan_Gardens</option>
+            <option>Mysore_Zoo</option>
+            <option>KRS_Dam</option>
+          </select>
+        </div>
+        <div class="col">
+          <label>Date</label>
+          <input id="date" type="date" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="col">
+          <label>Hour</label>
+          <select id="hour">
+            <!-- options 6-21 -->
+          </select>
+        </div>
+        <div class="col">
+          <label>Weather</label>
+          <select id="weather">
+            <option>Clear</option>
+            <option>Cloudy</option>
+            <option>Rain</option>
+            <option>Hot</option>
+            <option>Humid</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="col">
+          <label>Temperature (°C)</label>
+          <input id="temp" type="number" value="26.0" min="0" max="50" step="0.1" />
+        </div>
+        <div class="col">
+          <label>&nbsp;</label>
+          <div style="display:flex;gap:10px;align-items:center">
+            <label style="display:flex;align-items:center;"><input id="is_festival" type="checkbox" /> Festival</label>
+            <label style="display:flex;align-items:center;"><input id="is_holiday" type="checkbox" /> Holiday (weekend)</label>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
+        <button class="btn" id="predictBtn">Predict Crowd</button>
+        <button class="btn" id="randomizeBtn" style="background:transparent;color:var(--accent);box-shadow:none;border:1px solid rgba(255,255,255,0.04)">Random sample</button>
+      </div>
+
+      <div id="resultArea" style="margin-top:14px;display:none">
+        <div class="result">
+          <div style="flex:1">
+            <div style="font-size:13px;color:var(--muted)">Predicted crowd</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
+              <div id="densityBadge" class="badge">--</div>
+              <div>
+                <div class="density" id="densityText">--</div>
+                <div class="hint" id="suggestion">--</div>
+              </div>
+            </div>
+          </div>
+          <div style="min-width:120px;text-align:right">
+            <div class="muted">Estimated footfall</div>
+            <div class="stat" id="footfall">--</div>
+            <div class="muted" style="font-size:12px">persons (simulated)</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div class="small muted">Explanation (simple heuristic):</div>
+          <div style="font-size:13px;margin-top:6px;color:var(--muted)">
+            Footfall is computed from location popularity × time factor × festival/holiday × weather × temperature × small noise. Then mapped to quartiles computed by a simulated dataset.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- right: stats + heatmap -->
+    <aside class="side">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div class="muted">Simulator samples</div>
+            <div style="font-weight:700;font-size:20px" id="sampleCount">—</div>
+          </div>
+          <div style="text-align:right">
+            <div class="muted">Quartiles</div>
+            <div id="quartiles" style="font-weight:700;text-align:right">—</div>
+          </div>
+        </div>
+
+        <div class="heat" id="heatArea" aria-hidden="true">
+          <div>
+            <div style="font-size:15px">Location heat preview</div>
+            <div style="font-size:12px;margin-top:8px;color:var(--muted)">(visual is illustrative)</div>
+          </div>
+        </div>
+
+        <div style="margin-top:10px;font-size:13px;color:var(--muted)">
+          Tip: Use the "Random sample" button to explore different date/time possibilities quickly.
+        </div>
+      </div>
+    </aside>
+
+    <div class="footer card" style="text-align:center">
+      This is a frontend simulator — for production, replace heuristics with a trained ML model (server or WASM). Built for mobile & GitHub-ready.
+    </div>
+  </div>
+
+  <script>
+    /**************************************************************************
+     * Client-side crowd predictor (heuristic simulator)
+     * - generates many synthetic samples on load to compute quartile thresholds
+     * - uses the same formula idea as the Python heuristics shared earlier
+     * - maps a computed footfall to density label using quartiles
+     **************************************************************************/
+
+    // configuration and helper data
+    const LOCATIONS = [
+      "Chamundi_Temple","Nanjangud_Temple","Srirangapatna_Temple",
+      "Mysore_Palace","Brindavan_Gardens","Mysore_Zoo","KRS_Dam"
+    ];
+    const locPopularity = {
+      "Chamundi_Temple": 1.2,
+      "Nanjangud_Temple": 0.9,
+      "Srirangapatna_Temple": 0.6,
+      "Mysore_Palace": 1.5,
+      "Brindavan_Gardens": 1.1,
+      "Mysore_Zoo": 1.0,
+      "KRS_Dam": 0.7
+    };
+    const baseScale = {
+      "Chamundi_Temple": 500,
+      "Nanjangud_Temple": 300,
+      "Srirangapatna_Temple": 150,
+      "Mysore_Palace": 800,
+      "Brindavan_Gardens": 450,
+      "Mysore_Zoo": 350,
+      "KRS_Dam": 200
+    };
+    const weatherMultiplier = {
+      "Clear": 1.0,
+      "Cloudy": 0.95,
+      "Rain": 0.6,
+      "Hot": 0.8,
+      "Humid": 0.9
+    };
+
+    // DOM refs
+    const hourSelect = document.getElementById('hour');
+    const dateInput = document.getElementById('date');
+    const locationSelect = document.getElementById('location');
+    const weatherSelect = document.getElementById('weather');
+    const tempInput = document.getElementById('temp');
+    const isFestival = document.getElementById('is_festival');
+    const isHoliday = document.getElementById('is_holiday');
+    const predictBtn = document.getElementById('predictBtn');
+    const randomizeBtn = document.getElementById('randomizeBtn');
+    const resultArea = document.getElementById('resultArea');
+    const densityBadge = document.getElementById('densityBadge');
+    const densityText = document.getElementById('densityText');
+    const suggestion = document.getElementById('suggestion');
+    const footfallEl = document.getElementById('footfall');
+    const sampleCountEl = document.getElementById('sampleCount');
+    const quartilesEl = document.getElementById('quartiles');
+
+    // fill hour options
+    for (let h=6; h<=21; h++){
+      const opt = document.createElement('option');
+      opt.value = h;
+      opt.textContent = `${h}:00`;
+      hourSelect.appendChild(opt);
+    }
+
+    // set default date to today
+    const today = new Date().toISOString().slice(0,10);
+    dateInput.value = today;
+
+    // simulation storage
+    let simulatedSamples = []; // array of numbers (footfall)
+    let quartiles = null; // {q1,q2,q3}
+
+    // helper: time factor (same buckets as python)
+    function timeFactor(hour){
+      if (hour >=6 && hour <9) return 0.9;
+      if (hour >=9 && hour <12) return 1.0;
+      if (hour >=12 && hour <15) return 0.8;
+      if (hour >=15 && hour <18) return 1.1;
+      if (hour >=18 && hour <21) return 1.4;
+      return 0.6;
+    }
+
+    // helper: temp factor
+    function tempFactor(temp){
+      if (temp > 32) return 0.8;
+      if (temp < 20) return 0.85;
+      return 1.0;
+    }
+
+    // compute one footfall sample using heuristics
+    function computeFootfallSample({location, hour, weather, temp, is_festival, is_holiday}){
+      const pop = locPopularity[location] || 1.0;
+      const tf = timeFactor(hour);
+      const festivalFactor = is_festival ? 2.0 : 1.0;
+      const holidayFactor = is_holiday ? 1.4 : 1.0;
+      const wmul = weatherMultiplier[weather] ?? 1.0;
+      const tfac = tempFactor(temp);
+      const base = baseScale[location] || 200;
+      // noise: gaussian via Box-Muller
+      const noiseStd = base * 0.15;
+      let u1 = Math.random(), u2 = Math.random();
+      const noise = Math.sqrt(-2*Math.log(u1)) * Math.cos(2*Math.PI*u2) * noiseStd;
+      let footfall = Math.max(0, Math.round(base * pop * tf * festivalFactor * holidayFactor * wmul * tfac + noise));
+      return footfall;
+    }
+
+    // build many simulated samples to get quartiles (global)
+    function buildSimulatedDataset(n=5000){
+      simulatedSamples = [];
+      const weatherTypes = Object.keys(weatherMultiplier);
+      for (let i=0;i<n;i++){
+        const location = LOCATIONS[Math.floor(Math.random()*LOCATIONS.length)];
+        const hour = Math.floor(Math.random()*(21-6+1))+6; // 6..21
+        const weather = weatherTypes[Math.floor(Math.random()*weatherTypes.length)];
+        const month = Math.floor(Math.random()*12)+1;
+        // temp roughly by month (rough mapping)
+        const base_temp_by_month = [22,23,25,27,28,28,27,27,26,25,24,23];
+        const temp = base_temp_by_month[month-1] + (Math.random()*4-2);
+        const is_festival = Math.random() < 0.03 ? 1 : 0; // rare
+        const is_holiday = (Math.random() < 0.28) ? 1 : 0; // weekends probability
+        const f = computeFootfallSample({location,hour,weather,temp,is_festival,is_holiday});
+        simulatedSamples.push(f);
+      }
+      simulatedSamples.sort((a,b)=>a-b);
+      const q1 = simulatedSamples[Math.floor(simulatedSamples.length*0.25)];
+      const q2 = simulatedSamples[Math.floor(simulatedSamples.length*0.50)];
+      const q3 = simulatedSamples[Math.floor(simulatedSamples.length*0.75)];
+      quartiles = {q1,q2,q3};
+      sampleCountEl.textContent = simulatedSamples.length.toLocaleString();
+      quartilesEl.textContent = `${q1} / ${q2} / ${q3}`;
+    }
+
+    // map footfall to label using quartiles
+    function mapToDensityLabel(footfall){
+      if (!quartiles) return "Unknown";
+      if (footfall <= quartiles.q1) return "Low";
+      if (footfall <= quartiles.q2) return "Medium";
+      if (footfall <= quartiles.q3) return "High";
+      return "Very_High";
+    }
+
+    // visual badge color
+    function badgeColorFor(label){
+      switch(label){
+        case "Low": return {bg:"#94a3b8", text:"#071e2a"}; // muted gray
+        case "Medium": return {bg:"#fbbf24", text:"#071e2a"}; // amber
+        case "High": return {bg:"#fb7185", text:"#071e2a"}; // rose
+        case "Very_High": return {bg:"#ef4444", text:"#071e2a"}; // red
+        default: return {bg:"#94a3b8", text:"#071e2a"};
+      }
+    }
+
+    // perform prediction for the UI inputs
+    function predictFromUI(){
+      const location = locationSelect.value;
+      const dateStr = dateInput.value || today;
+      const hour = parseInt(hourSelect.value);
+      const weather = weatherSelect.value;
+      const temp = parseFloat(tempInput.value) || 26.0;
+      const festival = isFestival.checked ? 1 : 0;
+      const holiday = isHoliday.checked ? 1 : 0;
+
+      // if holiday unchecked but date is weekend, auto-suggest
+      let dt = new Date(dateStr + "T00:00:00");
+      if (!isHoliday.checked){
+        const dow = dt.getDay(); // 0 Sun .. 6 Sat
+        // treat Sat/Sun as weekend - set checkbox visually (but not force)
+        if (dow === 0 || dow === 6) {
+          // do not auto-change UI, just compute holiday factor if dow weekend
+        }
+      }
+
+      const footfall = computeFootfallSample({
+        location, hour, weather, temp,
+        is_festival: festival, is_holiday: holiday
+      });
+
+      const label = mapToDensityLabel(footfall);
+      showResult(label, footfall);
+    }
+
+    function showResult(label, footfall){
+      resultArea.style.display = "block";
+      densityBadge.textContent = label.replace("_"," ");
+      densityBadge.style.background = badgeColorFor(label).bg;
+      densityBadge.style.color = badgeColorFor(label).text;
+      densityText.textContent = (label === "Very_High") ? "Very High" : label;
+      footfallEl.textContent = footfall.toLocaleString();
+
+      if (label === "Very_High" || label === "High"){
+        suggestion.textContent = "Suggestion: arrive 1 hour earlier or pick a less busy time. Consider weekdays.";
+      } else {
+        suggestion.textContent = "Suggestion: good time to visit — crowd is expected to be light to moderate.";
+      }
+      // subtle animation to heat area (simple)
+      animateHeat(footfall);
+    }
+
+    // heat preview: change background gradient intensity based on footfall percentile
+    function animateHeat(footfall){
+      if (!quartiles) return;
+      const p = (footfall - simulatedSamples[0]) / (simulatedSamples[simulatedSamples.length-1] - simulatedSamples[0]);
+      const clamped = Math.max(0, Math.min(1, p));
+      const heatEl = document.getElementById('heatArea');
+      // compute color stop between cool and hot
+      const cool = [3,32,54]; // rgb
+      const hot = [255,78,78];
+      const r = Math.round(cool[0] + (hot[0]-cool[0])*clamped);
+      const g = Math.round(cool[1] + (hot[1]-cool[1])*clamped);
+      const b = Math.round(cool[2] + (hot[2]-cool[2])*clamped);
+      heatEl.style.background = `linear-gradient(180deg, rgb(${r},${g},${b},0.08), rgb(${r},${g},${b},0.04))`;
+    }
+
+    // randomize UI inputs for exploration
+    function randomizeInputs(){
+      const randomLocation = LOCATIONS[Math.floor(Math.random()*LOCATIONS.length)];
+      locationSelect.value = randomLocation;
+      const randHour = Math.floor(Math.random()*(21-6+1))+6;
+      hourSelect.value = randHour;
+      // random date in next 90 days
+      const d = new Date();
+      d.setDate(d.getDate() + Math.floor(Math.random()*90));
+      dateInput.value = d.toISOString().slice(0,10);
+      const weathers = Object.keys(weatherMultiplier);
+      weatherSelect.value = weathers[Math.floor(Math.random()*weathers.length)];
+      // temp roughly by month mapping
+      const month = d.getMonth()+1;
+      const base_temp_by_month = [22,23,25,27,28,28,27,27,26,25,24,23];
+      tempInput.value = (base_temp_by_month[month-1] + (Math.random()*4-2)).toFixed(1);
+      isFestival.checked = Math.random() < 0.05;
+      // set holiday if weekend
+      const dow = d.getDay();
+      isHoliday.checked = (dow === 0 || dow === 6);
+    }
+
+    // init on page load
+    (function init(){
+      // run simulation to compute quartiles
+      buildSimulatedDataset(5000);
+      // initial randomize
+      randomizeInputs();
+      // initial predict to show a result
+      predictFromUI();
+    })();
+
+    // event handlers
+    predictBtn.addEventListener('click', (e)=>{
+      e.preventDefault();
+      predictFromUI();
+    });
+    randomizeBtn.addEventListener('click', (e)=>{
+      e.preventDefault();
+      randomizeInputs();
+      predictFromUI();
+    });
+
+    // expose predictForDebug on window for console testing
+    window.predictFromUI = predictFromUI;
+
+  </script>
+</body>
+  </html>
